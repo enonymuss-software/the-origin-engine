@@ -42,48 +42,67 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.getElementById('world-container').appendChild(renderer.domElement);
 
-        // 4. THE LANDSCAPE (Procedural Terrain)
-        // We create a large flat plane made of 100x100 tiny squares
-        const geometry = new THREE.PlaneGeometry(10, 10, 100, 100);
-        
-        // This is the "Math" that creates mountains
+        // 4. THE LIGHTING (The Sun)
+        const ambientLight = new THREE.AmbientLight(0x404040, 2); // Soft white light everywhere
+        scene.add(ambientLight);
+
+        const sunLight = new THREE.DirectionalLight(0xffffff, 3); // Strong "Sun" light
+        sunLight.position.set(5, 10, 7);
+        scene.add(sunLight);
+
+        // 5. THE LANDSCAPE (Colorized Terrain)
+        const geometry = new THREE.PlaneGeometry(15, 15, 120, 120);
         const vertices = geometry.attributes.position.array;
+        
+        // Create a place to store colors for every point
+        const colors = [];
+        const color = new THREE.Color();
+
         for (let i = 0; i < vertices.length; i += 3) {
             const x = vertices[i];
             const y = vertices[i + 1];
             
-            // We use a Sine wave combo to "crumple" the paper
-            // This is a simple version of "Noise"
-            vertices[i + 2] = Math.sin(x * 2) * Math.cos(y * 2) * 0.5;
+            // The "Mountain" Math
+            const height = Math.sin(x * 0.5) * Math.cos(y * 0.5) * 2 + 
+                           Math.sin(x * 1.5) * 0.5; // Adding a second layer for detail
+            vertices[i + 2] = height;
+
+            // The "Color" Logic
+            if (height < 0.2) {
+                color.setHex(0x0066ff); // Water Blue
+            } else if (height < 1.2) {
+                color.setHex(0x228b22); // Forest Green
+            } else {
+                color.setHex(0xffffff); // Snow White
+            }
+            colors.push(color.r, color.g, color.b);
         }
 
-        const material = new THREE.MeshBasicMaterial({ 
-            color: 0x00ffcc, 
-            wireframe: true 
+        // Tell the geometry to use these colors
+        geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+
+        const material = new THREE.MeshStandardMaterial({ 
+            vertexColors: true, // Use the colors we just made
+            flatShading: true   // Gives it a cool "low-poly" crystal look
         });
         
         const terrain = new THREE.Mesh(geometry, material);
-        terrain.rotation.x = -Math.PI / 2; // Lay it flat like a floor
+        terrain.rotation.x = -Math.PI / 2;
         scene.add(terrain);
 
-        // Adjust camera to see the landscape
-        camera.position.set(0, 2, 5);
+        camera.position.set(0, 5, 10);
         camera.lookAt(0, 0, 0);
 
-        // 5. THE ANIMATION LOOP
+        // 6. THE ANIMATION LOOP
         function animate() {
             requestAnimationFrame(animate);
-            
-            // Gently rotate the world so we can see the 3D depth
-            terrain.rotation.z += 0.002;
-            
+            terrain.rotation.z += 0.001; // Very slow rotation
             renderer.render(scene, camera);
         }
 
         animate();
 
-        // Update the UI
-        document.querySelector('.status-text').innerText = "THE ORIGIN ENGINE: TERRAIN GENERATED";
+        document.querySelector('.status-text').innerText = "THE ORIGIN ENGINE: BIOMES STABILIZED";
     </script>
 </body>
 </html>
