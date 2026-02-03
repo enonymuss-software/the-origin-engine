@@ -2,30 +2,38 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>The Origin Engine</title>
+    <title>The Origin Engine - Full Simulation</title>
     <style>
-        /* This section controls the "look" of the page */
-        body { margin: 0; background-color: #050505; color: #00ffcc; font-family: monospace; overflow: hidden; }
-        #ui-layer { position: absolute; top: 20px; left: 20px; z-index: 10; pointer-events: none; }
-        .status-text { font-size: 1.2rem; text-shadow: 0 0 10px #00ffcc; }
+        body { margin: 0; background-color: #050505; color: #00ffcc; font-family: 'Courier New', monospace; overflow: hidden; }
+        #ui-layer { 
+            position: absolute; top: 20px; left: 20px; z-index: 10; 
+            background: rgba(0, 20, 20, 0.8); padding: 15px; 
+            border: 1px solid #00ffcc; border-radius: 5px;
+            pointer-events: auto; width: 250px;
+        }
+        .status-text { font-size: 1.1rem; font-weight: bold; margin-bottom: 5px; color: #fff; text-transform: uppercase; }
+        #system-readout { font-size: 0.9rem; margin-bottom: 10px; color: #00ffcc; }
+        .control-group { font-size: 0.8rem; line-height: 1.6; }
+        label { display: block; margin-top: 10px; color: #00ffcc; letter-spacing: 1px; }
+        input[type=range] { width: 100%; cursor: pointer; accent-color: #00ffcc; }
+        hr { border: 0; border-top: 1px solid #004444; margin: 10px 0; }
     </style>
 </head>
 <body>
 
     <div id="ui-layer">
-        <div class="status-text">THE ORIGIN ENGINE: GOD MODE</div>
-        <div id="system-readout">SYSTEM STABLE: 1.0.0</div>
-        <hr style="border: 1px solid #00ffcc; margin: 10px 0;">
-        
-        <div class="control-group" style="pointer-events: auto;">
-            <label>WORLD ROTATION</label><br>
-            <input type="range" id="speedSlider" min="0" max="0.01" step="0.0001" value="0.0005"><br>
+        <div class="status-text">Origin Engine: Active</div>
+        <div id="system-readout">POPULATION: 0</div>
+        <hr>
+        <div class="control-group">
+            <label>WORLD ROTATION</label>
+            <input type="range" id="speedSlider" min="0" max="0.01" step="0.0001" value="0.0005">
             
-            <label>LIFE SPEED</label><br>
-            <input type="range" id="lifeSlider" min="0" max="0.1" step="0.001" value="0.02"><br>
+            <label>METABOLISM (LIFE SPEED)</label>
+            <input type="range" id="lifeSlider" min="0" max="0.1" step="0.001" value="0.02">
             
-            <label>SEA LEVEL</label><br>
-            <input type="range" id="seaSlider" min="-2" max="2" step="0.1" value="0">
+            <label>SEA LEVEL (FLOOD)</label>
+            <input type="range" id="seaSlider" min="-1.5" max="2.5" step="0.1" value="0">
         </div>
     </div>
 
@@ -42,124 +50,155 @@
     <script type="module">
         import * as THREE from 'three';
 
+        // --- 1. THE UNIVERSE SETUP ---
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x020205);
 
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(0, 8, 12);
+        camera.position.set(0, 10, 15);
         camera.lookAt(0, 0, 0);
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.getElementById('world-container').appendChild(renderer.domElement);
 
-        // LIGHTING
         const ambientLight = new THREE.AmbientLight(0x404040, 2);
         scene.add(ambientLight);
         const sunLight = new THREE.DirectionalLight(0xffffff, 3);
-        sunLight.position.set(5, 10, 7);
+        sunLight.position.set(5, 15, 7);
         scene.add(sunLight);
 
-        // LANDSCAPE SETUP
+        // --- 2. THE LANDSCAPE ---
         const size = 20;
         const segments = 100;
         const geometry = new THREE.PlaneGeometry(size, size, segments, segments);
-        const terrain = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true }));
+        // Standard material that reacts to lights
+        const material = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true });
+        const terrain = new THREE.Mesh(geometry, material);
         terrain.rotation.x = -Math.PI / 2;
         scene.add(terrain);
 
-        // LIFE SPARK SETUP
-        const particleCount = 600;
-        const pGeometry = new THREE.BufferGeometry();
-        const pPositions = new Float32Array(particleCount * 3);
-        for (let i = 0; i < particleCount; i++) {
-            pPositions[i * 3] = (Math.random() - 0.5) * 18; 
-            pPositions[i * 3 + 2] = (Math.random() - 0.5) * 18;
+        // --- 3. THE BIOLOGY ---
+        let particles = [];
+        const maxPopulation = 1500;
+        // Initial ancestors
+        for (let i = 0; i < 150; i++) {
+            particles.push({
+                x: (Math.random() - 0.5) * 15,
+                z: (Math.random() - 0.5) * 15,
+                energy: 100
+            });
         }
-        pGeometry.setAttribute('position', new THREE.BufferAttribute(pPositions, 3));
-        const pMaterial = new THREE.PointsMaterial({ size: 0.15, vertexColors: false, transparent: true, opacity: 0.9 });
+
+        const pGeometry = new THREE.BufferGeometry();
+        const pMaterial = new THREE.PointsMaterial({ size: 0.18, vertexColors: true, transparent: true, opacity: 0.8 });
         const lifeForms = new THREE.Points(pGeometry, pMaterial);
         scene.add(lifeForms);
 
-        // UI ELEMENTS
+        // --- 4. ENGINE CONTROLS ---
         const speedSlider = document.getElementById('speedSlider');
         const lifeSlider = document.getElementById('lifeSlider');
         const seaSlider = document.getElementById('seaSlider');
+        const readout = document.getElementById('system-readout');
 
-        // THE CALCULATION ENGINE
+        // --- 5. THE ANIMATION LOOP (The "Heartbeat") ---
         function animate() {
             requestAnimationFrame(animate);
             
             const currentWaterLevel = parseFloat(seaSlider.value);
             const currentLifeSpeed = parseFloat(lifeSlider.value);
-            const worldRotationSpeed = parseFloat(speedSlider.value);
+            const worldRotation = parseFloat(speedSlider.value);
 
-            // 1. UPDATE TERRAIN COLORS (The Flooding Logic)
+            // A. Update Terrain Height and Color
             const vertices = geometry.attributes.position.array;
-            const colors = [];
-            const color = new THREE.Color();
+            const terrainColors = [];
+            const tempColor = new THREE.Color();
 
             for (let i = 0; i < vertices.length; i += 3) {
-                const x = vertices[i];
-                const y = vertices[i + 1];
-                const h = Math.sin(x * 0.4) * Math.cos(y * 0.4) * 2 + Math.sin(x * 2) * 0.2;
+                const vx = vertices[i];
+                const vy = vertices[i + 1];
+                // Math-based mountains
+                const h = Math.sin(vx * 0.4) * Math.cos(vy * 0.4) * 2 + Math.sin(vx * 2) * 0.2;
                 vertices[i + 2] = h;
 
-                if (h < currentWaterLevel) {
-                    color.setHex(0x0044ff); // Water
-                } else if (h < currentWaterLevel + 0.2) {
-                    color.setHex(0xeedd88); // Sand
-                } else if (h < 1.5) {
-                    color.setHex(0x22aa22); // Grass
-                } else {
-                    color.setHex(0xeeeeee); // Snow
-                }
-                colors.push(color.r, color.g, color.b);
+                // Set color based on terrain type relative to sea level
+                if (h < currentWaterLevel) tempColor.setHex(0x0044ff); // Sea
+                else if (h < currentWaterLevel + 0.15) tempColor.setHex(0xd2b48c); // Sand
+                else if (h < 1.4) tempColor.setHex(0x228b22); // Grass
+                else tempColor.setHex(0xffffff); // Peaks
+                
+                terrainColors.push(tempColor.r, tempColor.g, tempColor.b);
             }
-            geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+            geometry.setAttribute('color', new THREE.Float32BufferAttribute(terrainColors, 3));
+            geometry.attributes.position.needsUpdate = true;
             geometry.attributes.color.needsUpdate = true;
 
-            // 2. UPDATE LIFE FORMS (The Panic & Ground-Clamping)
-            const pPos = lifeForms.geometry.attributes.position.array;
-            for (let i = 0; i < particleCount; i++) {
-                const curX = pPos[i * 3];
-                const curZ = pPos[i * 3 + 2];
-                
-                // Calculate height at current position
-                const landH = Math.sin(curX * 0.4) * Math.cos(curZ * 0.4) * 2 + Math.sin(curX * 2) * 0.2;
+            // B. Update Population Dynamics
+            const activePositions = [];
+            const activeColors = [];
+            const nextGen = [];
+            const particleColor = new THREE.Color();
 
-                // WATER PANIC LOGIC
-                let panicMultiplier = 1.0;
-                if (landH < currentWaterLevel) {
-                    panicMultiplier = 4.0; // Move 4x faster in water
+            for (let i = 0; i < particles.length; i++) {
+                let p = particles[i];
+
+                // Check environment at current location
+                const landH = Math.sin(p.x * 0.4) * Math.cos(p.z * 0.4) * 2 + Math.sin(p.x * 2) * 0.2;
+                const inWater = landH < currentWaterLevel;
+                const onGrass = (landH >= currentWaterLevel && landH < 1.4);
+
+                // Movement Logic: Panic in water, graze on land
+                const speedMult = inWater ? 4.0 : 1.0;
+                p.x += (Math.random() - 0.5) * currentLifeSpeed * speedMult;
+                p.z += (Math.random() - 0.5) * currentLifeSpeed * speedMult;
+
+                // Metabolism Logic
+                if (onGrass) p.energy += 0.6;  // Feed
+                else p.energy -= 1.2;          // Starve or drown
+
+                // Reproduction Logic (Asexual Budding)
+                if (p.energy > 160 && nextGen.length < maxPopulation) {
+                    p.energy = 80; // Cost of birth
+                    nextGen.push({ x: p.x, z: p.z, energy: 80 });
                 }
 
-                // Apply Movement
-                pPos[i * 3] += (Math.random() - 0.5) * currentLifeSpeed * panicMultiplier;
-                pPos[i * 3 + 2] += (Math.random() - 0.5) * currentLifeSpeed * panicMultiplier;
-
-                // CLAMPING: Instant height update
-                // We add a tiny bit (0.05) so they don't "sink" into the floor
-                pPos[i * 3 + 1] = Math.max(landH, currentWaterLevel) + 0.05;
-
-                // Boundary Reset
-                if (Math.abs(curX) > 9.5 || Math.abs(curZ) > 9.5) {
-                    pPos[i * 3] = (Math.random() - 0.5) * 10;
-                    pPos[i * 3 + 2] = (Math.random() - 0.5) * 10;
+                // Survival Check
+                if (p.energy > 0) {
+                    nextGen.push(p);
+                    // Ground clamping
+                    const finalY = Math.max(landH, currentWaterLevel) + 0.1;
+                    activePositions.push(p.x, finalY, p.z);
+                    
+                    // Visual state
+                    if (p.energy > 140) particleColor.setHex(0xff00ff); // Mating state
+                    else if (inWater) particleColor.setHex(0x00ffff);   // Swimming state
+                    else particleColor.setHex(0x00ffcc);                // Default
+                    
+                    activeColors.push(particleColor.r, particleColor.g, particleColor.b);
                 }
             }
-            lifeForms.geometry.attributes.position.needsUpdate = true;
-            
-            // 3. THE SYNC FIX: Rotate the CONTAINER, not the individual pieces
-            // This prevents the "Hovering" glitch
-            terrain.rotation.z += worldRotationSpeed;
-            lifeForms.rotation.y = terrain.rotation.z; // Keep particles synced with land rotation
-            
+
+            // Sync particles and update UI
+            particles = nextGen;
+            pGeometry.setAttribute('position', new THREE.Float32BufferAttribute(activePositions, 3));
+            pGeometry.setAttribute('color', new THREE.Float32BufferAttribute(activeColors, 3));
+            readout.innerText = `POPULATION: ${particles.length}`;
+
+            // C. Synchronized Rotation
+            terrain.rotation.z += worldRotation;
+            lifeForms.rotation.y = terrain.rotation.z;
+
             renderer.render(scene, camera);
         }
 
+        // Handle window resizing
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
         animate();
-        document.querySelector('.status-text').innerText = "THE ORIGIN ENGINE: LIFE DETECTED";
     </script>
 </body>
 </html>
