@@ -2,202 +2,177 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>The Origin Engine - Full Simulation</title>
+    <title>The Origin Engine - Living Ecosystem</title>
     <style>
         body { margin: 0; background-color: #050505; color: #00ffcc; font-family: 'Courier New', monospace; overflow: hidden; }
         #ui-layer { 
             position: absolute; top: 20px; left: 20px; z-index: 10; 
-            background: rgba(0, 20, 20, 0.8); padding: 15px; 
+            background: rgba(0, 20, 20, 0.9); padding: 15px; 
             border: 1px solid #00ffcc; border-radius: 5px;
             pointer-events: auto; width: 250px;
         }
         .status-text { font-size: 1.1rem; font-weight: bold; margin-bottom: 5px; color: #fff; text-transform: uppercase; }
         #system-readout { font-size: 0.9rem; margin-bottom: 10px; color: #00ffcc; }
-        .control-group { font-size: 0.8rem; line-height: 1.6; }
-        label { display: block; margin-top: 10px; color: #00ffcc; letter-spacing: 1px; }
+        label { display: block; margin-top: 10px; color: #00ffcc; font-size: 0.7rem; letter-spacing: 1px; }
         input[type=range] { width: 100%; cursor: pointer; accent-color: #00ffcc; }
-        hr { border: 0; border-top: 1px solid #004444; margin: 10px 0; }
+        button { 
+            width: 100%; margin-top: 15px; background: #004444; border: 1px solid #00ffcc; 
+            color: #00ffcc; padding: 8px; cursor: pointer; font-family: inherit; font-weight: bold;
+        }
+        button:hover { background: #00ffcc; color: #050505; }
     </style>
 </head>
 <body>
 
     <div id="ui-layer">
-        <div class="status-text">Origin Engine: Active</div>
+        <div class="status-text">Origin Engine</div>
         <div id="system-readout">POPULATION: 0</div>
-        <hr>
-        <div class="control-group">
-            <label>WORLD ROTATION</label>
-            <input type="range" id="speedSlider" min="0" max="0.01" step="0.0001" value="0.0005">
-            
-            <label>METABOLISM (LIFE SPEED)</label>
-            <input type="range" id="lifeSlider" min="0" max="0.1" step="0.001" value="0.02">
-            
-            <label>SEA LEVEL (FLOOD)</label>
-            <input type="range" id="seaSlider" min="-1.5" max="2.5" step="0.1" value="0">
-        </div>
+        <hr style="border:0; border-top:1px solid #004444;">
+        <label>WORLD ROTATION</label>
+        <input type="range" id="speedSlider" min="0" max="0.01" step="0.0001" value="0.0005">
+        <label>METABOLISM</label>
+        <input type="range" id="lifeSlider" min="0" max="0.1" step="0.001" value="0.02">
+        <label>SEA LEVEL</label>
+        <input type="range" id="seaSlider" min="-1.5" max="2" step="0.1" value="0">
+        <button id="reseedBtn">RESEED LIFE (ADD 100)</button>
     </div>
 
     <div id="world-container"></div>
 
     <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
-            }
-        }
+        { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
     </script>
 
     <script type="module">
         import * as THREE from 'three';
 
-        // --- 1. THE UNIVERSE SETUP ---
+        // --- ENGINE INITIALIZATION ---
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x020205);
-
+        scene.background = new THREE.Color(0x010103);
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(0, 10, 15);
+        camera.position.set(0, 12, 16);
         camera.lookAt(0, 0, 0);
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.getElementById('world-container').appendChild(renderer.domElement);
 
-        const ambientLight = new THREE.AmbientLight(0x404040, 2);
-        scene.add(ambientLight);
-        const sunLight = new THREE.DirectionalLight(0xffffff, 3);
-        sunLight.position.set(5, 15, 7);
-        scene.add(sunLight);
+        // A GROUP to keep everything synced during rotation
+        const worldGroup = new THREE.Group();
+        scene.add(worldGroup);
 
-        // --- 2. THE LANDSCAPE ---
-        const size = 20;
-        const segments = 100;
+        const sun = new THREE.DirectionalLight(0xffffff, 3);
+        sun.position.set(5, 15, 7);
+        scene.add(sun, new THREE.AmbientLight(0x404040, 2));
+
+        // --- TERRAIN & RESOURCE DATA ---
+        const size = 20, segments = 80;
         const geometry = new THREE.PlaneGeometry(size, size, segments, segments);
-        // Standard material that reacts to lights
-        const material = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true });
-        const terrain = new THREE.Mesh(geometry, material);
+        const terrain = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true }));
         terrain.rotation.x = -Math.PI / 2;
-        scene.add(terrain);
+        worldGroup.add(terrain);
 
-        // --- 3. THE BIOLOGY ---
+        // Resource health for every vertex
+        const vertexCount = geometry.attributes.position.count;
+        const grassHealth = new Float32Array(vertexCount).fill(1.0);
+
+        // --- LIFE DATA ---
         let particles = [];
-        const maxPopulation = 1500;
-        // Initial ancestors
-        for (let i = 0; i < 150; i++) {
-            particles.push({
-                x: (Math.random() - 0.5) * 15,
-                z: (Math.random() - 0.5) * 15,
-                energy: 100
-            });
-        }
-
+        const maxPop = 1200;
         const pGeometry = new THREE.BufferGeometry();
-        const pMaterial = new THREE.PointsMaterial({ size: 0.18, vertexColors: true, transparent: true, opacity: 0.8 });
+        const pMaterial = new THREE.PointsMaterial({ size: 0.22, vertexColors: true, transparent: true, opacity: 0.9 });
         const lifeForms = new THREE.Points(pGeometry, pMaterial);
-        scene.add(lifeForms);
+        worldGroup.add(lifeForms); // Added to group for sync
 
-        // --- 4. ENGINE CONTROLS ---
-        const speedSlider = document.getElementById('speedSlider');
-        const lifeSlider = document.getElementById('lifeSlider');
-        const seaSlider = document.getElementById('seaSlider');
+        function spawn(count) {
+            for (let i = 0; i < count; i++) {
+                particles.push({ x: (Math.random()-0.5)*15, z: (Math.random()-0.5)*15, energy: 100 });
+            }
+        }
+        spawn(150);
+
+        // --- INPUTS ---
+        const sSpeed = document.getElementById('speedSlider');
+        const sLife = document.getElementById('lifeSlider');
+        const sSea = document.getElementById('seaSlider');
         const readout = document.getElementById('system-readout');
+        document.getElementById('reseedBtn').onclick = () => spawn(100);
 
-        // --- 5. THE ANIMATION LOOP (The "Heartbeat") ---
+        // --- SIMULATION LOOP ---
         function animate() {
             requestAnimationFrame(animate);
-            
-            const currentWaterLevel = parseFloat(seaSlider.value);
-            const currentLifeSpeed = parseFloat(lifeSlider.value);
-            const worldRotation = parseFloat(speedSlider.value);
+            const water = parseFloat(sSea.value), metabolism = parseFloat(sLife.value);
 
-            // A. Update Terrain Height and Color
-            const vertices = geometry.attributes.position.array;
-            const terrainColors = [];
-            const tempColor = new THREE.Color();
+            // 1. UPDATE TERRAIN & RESOURCES
+            const pos = geometry.attributes.position.array;
+            const colors = [];
+            const tempC = new THREE.Color();
 
-            for (let i = 0; i < vertices.length; i += 3) {
-                const vx = vertices[i];
-                const vy = vertices[i + 1];
-                // Math-based mountains
-                const h = Math.sin(vx * 0.4) * Math.cos(vy * 0.4) * 2 + Math.sin(vx * 2) * 0.2;
-                vertices[i + 2] = h;
+            for (let i = 0; i < vertexCount; i++) {
+                const vx = pos[i*3], vy = pos[i*3+1];
+                const h = Math.sin(vx*0.4)*Math.cos(vy*0.4)*2 + Math.sin(vx*2.0)*0.2;
+                pos[i*3+2] = h; // Apply height
 
-                // Set color based on terrain type relative to sea level
-                if (h < currentWaterLevel) tempColor.setHex(0x0044ff); // Sea
-                else if (h < currentWaterLevel + 0.15) tempColor.setHex(0xd2b48c); // Sand
-                else if (h < 1.4) tempColor.setHex(0x228b22); // Grass
-                else tempColor.setHex(0xffffff); // Peaks
+                // Regrow grass slowly
+                if (grassHealth[i] < 1.0) grassHealth[i] += 0.001;
+
+                if (h < water) tempC.setHex(0x0044ff); // Water
+                else if (h < water + 0.1) tempC.setHex(0xd2b48c); // Sand
+                else if (h < 1.5) {
+                    // Grass color fades to brown as health decreases
+                    tempC.setRGB(0.13 + (1 - grassHealth[i])*0.2, 0.54 * grassHealth[i], 0.13 * grassHealth[i]);
+                } else tempC.setHex(0xffffff); // Snow
                 
-                terrainColors.push(tempColor.r, tempColor.g, tempColor.b);
+                colors.push(tempC.r, tempC.g, tempC.b);
             }
-            geometry.setAttribute('color', new THREE.Float32BufferAttribute(terrainColors, 3));
+            geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
             geometry.attributes.position.needsUpdate = true;
             geometry.attributes.color.needsUpdate = true;
 
-            // B. Update Population Dynamics
-            const activePositions = [];
-            const activeColors = [];
-            const nextGen = [];
-            const particleColor = new THREE.Color();
+            // 2. UPDATE BIOLOGY
+            const nextGen = [], drawPos = [], drawCol = [], pCol = new THREE.Color();
+            
+            for (let p of particles) {
+                const landH = Math.sin(p.x*0.4)*Math.cos(p.z*0.4)*2 + Math.sin(p.x*2.0)*0.2;
+                const speed = (landH < water) ? 4 : 1;
+                
+                p.x += (Math.random()-0.5) * metabolism * speed;
+                p.z += (Math.random()-0.5) * metabolism * speed;
 
-            for (let i = 0; i < particles.length; i++) {
-                let p = particles[i];
+                // Consumption Logic: Find nearest vertex to "eat"
+                const gridX = Math.round(((p.x + size/2) / size) * segments);
+                const gridZ = Math.round(((p.z + size/2) / size) * segments);
+                const vIdx = gridZ * (segments + 1) + gridX;
 
-                // Check environment at current location
-                const landH = Math.sin(p.x * 0.4) * Math.cos(p.z * 0.4) * 2 + Math.sin(p.x * 2) * 0.2;
-                const inWater = landH < currentWaterLevel;
-                const onGrass = (landH >= currentWaterLevel && landH < 1.4);
-
-                // Movement Logic: Panic in water, graze on land
-                const speedMult = inWater ? 4.0 : 1.0;
-                p.x += (Math.random() - 0.5) * currentLifeSpeed * speedMult;
-                p.z += (Math.random() - 0.5) * currentLifeSpeed * speedMult;
-
-                // Metabolism Logic
-                if (onGrass) p.energy += 0.6;  // Feed
-                else p.energy -= 1.2;          // Starve or drown
-
-                // Reproduction Logic (Asexual Budding)
-                if (p.energy > 160 && nextGen.length < maxPopulation) {
-                    p.energy = 80; // Cost of birth
-                    nextGen.push({ x: p.x, z: p.z, energy: 80 });
+                if (landH >= water && landH < 1.5 && grassHealth[vIdx] > 0.1) {
+                    p.energy += 1.5; 
+                    grassHealth[vIdx] -= 0.05; // Eat the grass!
+                } else {
+                    p.energy -= 1.0;
                 }
 
-                // Survival Check
+                if (p.energy > 180 && nextGen.length < maxPop) {
+                    p.energy = 80; nextGen.push({ x: p.x, z: p.z, energy: 80 });
+                }
+
                 if (p.energy > 0) {
                     nextGen.push(p);
-                    // Ground clamping
-                    const finalY = Math.max(landH, currentWaterLevel) + 0.1;
-                    activePositions.push(p.x, finalY, p.z);
-                    
-                    // Visual state
-                    if (p.energy > 140) particleColor.setHex(0xff00ff); // Mating state
-                    else if (inWater) particleColor.setHex(0x00ffff);   // Swimming state
-                    else particleColor.setHex(0x00ffcc);                // Default
-                    
-                    activeColors.push(particleColor.r, particleColor.g, particleColor.b);
+                    drawPos.push(p.x, Math.max(landH, water)+0.15, p.z);
+                    pCol.setHex(p.energy > 150 ? 0xff00ff : (landH < water ? 0x00ffff : 0x00ffcc));
+                    drawCol.push(pCol.r, pCol.g, pCol.b);
                 }
+                if (Math.abs(p.x) > 9.8 || Math.abs(p.z) > 9.8) { p.x *= -0.9; p.z *= -0.9; }
             }
 
-            // Sync particles and update UI
             particles = nextGen;
-            pGeometry.setAttribute('position', new THREE.Float32BufferAttribute(activePositions, 3));
-            pGeometry.setAttribute('color', new THREE.Float32BufferAttribute(activeColors, 3));
+            pGeometry.setAttribute('position', new THREE.Float32BufferAttribute(drawPos, 3));
+            pGeometry.setAttribute('color', new THREE.Float32BufferAttribute(drawCol, 3));
             readout.innerText = `POPULATION: ${particles.length}`;
 
-            // C. Synchronized Rotation
-            terrain.rotation.z += worldRotation;
-            lifeForms.rotation.y = terrain.rotation.z;
-
+            // 3. SYNCED ROTATION
+            worldGroup.rotation.y += parseFloat(sSpeed.value);
             renderer.render(scene, camera);
         }
-
-        // Handle window resizing
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
-
         animate();
     </script>
 </body>
