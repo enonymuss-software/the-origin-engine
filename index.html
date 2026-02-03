@@ -2,17 +2,17 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>The Origin Engine - Living Ecosystem</title>
+    <title>The Origin Engine - High-Intensity Ecosystem</title>
     <style>
-        body { margin: 0; background-color: #050505; color: #00ffcc; font-family: 'Courier New', monospace; overflow: hidden; }
+        body { margin: 0; background-color: #000; color: #00ffcc; font-family: 'Courier New', monospace; overflow: hidden; }
         #ui-layer { 
             position: absolute; top: 20px; left: 20px; z-index: 10; 
-            background: rgba(0, 20, 20, 0.9); padding: 15px; 
+            background: rgba(0, 10, 10, 0.85); padding: 15px; 
             border: 1px solid #00ffcc; border-radius: 5px;
-            pointer-events: auto; width: 250px;
+            pointer-events: auto; width: 250px; box-shadow: 0 0 15px rgba(0, 255, 204, 0.2);
         }
         .status-text { font-size: 1.1rem; font-weight: bold; margin-bottom: 5px; color: #fff; text-transform: uppercase; }
-        #system-readout { font-size: 0.9rem; margin-bottom: 10px; color: #00ffcc; }
+        #system-readout { font-size: 1rem; margin-bottom: 10px; color: #00ffcc; font-weight: bold; }
         label { display: block; margin-top: 10px; color: #00ffcc; font-size: 0.7rem; letter-spacing: 1px; }
         input[type=range] { width: 100%; cursor: pointer; accent-color: #00ffcc; }
         button { 
@@ -31,7 +31,7 @@
         <label>WORLD ROTATION</label>
         <input type="range" id="speedSlider" min="0" max="0.01" step="0.0001" value="0.0005">
         <label>METABOLISM</label>
-        <input type="range" id="lifeSlider" min="0" max="0.1" step="0.001" value="0.02">
+        <input type="range" id="lifeSlider" min="0.005" max="0.1" step="0.001" value="0.025">
         <label>SEA LEVEL</label>
         <input type="range" id="seaSlider" min="-1.5" max="2" step="0.1" value="0">
         <button id="reseedBtn">RESEED LIFE (ADD 100)</button>
@@ -46,64 +46,73 @@
     <script type="module">
         import * as THREE from 'three';
 
-        // --- ENGINE INITIALIZATION ---
+        // --- ENGINE SETUP ---
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x010103);
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(0, 12, 16);
+        camera.position.set(0, 12, 18);
         camera.lookAt(0, 0, 0);
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.getElementById('world-container').appendChild(renderer.domElement);
 
-        // A GROUP to keep everything synced during rotation
         const worldGroup = new THREE.Group();
         scene.add(worldGroup);
 
-        const sun = new THREE.DirectionalLight(0xffffff, 3);
+        scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+        const sun = new THREE.DirectionalLight(0xffffff, 2);
         sun.position.set(5, 15, 7);
-        scene.add(sun, new THREE.AmbientLight(0x404040, 2));
+        scene.add(sun);
 
-        // --- TERRAIN & RESOURCE DATA ---
+        // --- TERRAIN & RESOURCES ---
         const size = 20, segments = 80;
         const geometry = new THREE.PlaneGeometry(size, size, segments, segments);
         const terrain = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true }));
         terrain.rotation.x = -Math.PI / 2;
         worldGroup.add(terrain);
 
-        // Resource health for every vertex
         const vertexCount = geometry.attributes.position.count;
         const grassHealth = new Float32Array(vertexCount).fill(1.0);
 
-        // --- LIFE DATA ---
+        // --- ENHANCED LIFE FORMS ---
         let particles = [];
-        const maxPop = 1200;
+        const maxPop = 1500;
         const pGeometry = new THREE.BufferGeometry();
-        const pMaterial = new THREE.PointsMaterial({ size: 0.22, vertexColors: true, transparent: true, opacity: 0.9 });
+        
+        // Additive blending makes them look like glowing lights
+        const pMaterial = new THREE.PointsMaterial({ 
+            size: 0.35, 
+            vertexColors: true, 
+            transparent: true, 
+            opacity: 1.0,
+            blending: THREE.AdditiveBlending 
+        });
+        
         const lifeForms = new THREE.Points(pGeometry, pMaterial);
-        worldGroup.add(lifeForms); // Added to group for sync
+        worldGroup.add(lifeForms);
 
         function spawn(count) {
             for (let i = 0; i < count; i++) {
-                particles.push({ x: (Math.random()-0.5)*15, z: (Math.random()-0.5)*15, energy: 100 });
+                particles.push({ 
+                    x: (Math.random()-0.5)*12, 
+                    z: (Math.random()-0.5)*12, 
+                    energy: 100 + Math.random()*50 
+                });
             }
         }
-        spawn(150);
+        spawn(200);
 
-        // --- INPUTS ---
         const sSpeed = document.getElementById('speedSlider');
         const sLife = document.getElementById('lifeSlider');
         const sSea = document.getElementById('seaSlider');
         const readout = document.getElementById('system-readout');
         document.getElementById('reseedBtn').onclick = () => spawn(100);
 
-        // --- SIMULATION LOOP ---
         function animate() {
             requestAnimationFrame(animate);
             const water = parseFloat(sSea.value), metabolism = parseFloat(sLife.value);
 
-            // 1. UPDATE TERRAIN & RESOURCES
+            // 1. TERRAIN LOGIC
             const pos = geometry.attributes.position.array;
             const colors = [];
             const tempC = new THREE.Color();
@@ -111,17 +120,17 @@
             for (let i = 0; i < vertexCount; i++) {
                 const vx = pos[i*3], vy = pos[i*3+1];
                 const h = Math.sin(vx*0.4)*Math.cos(vy*0.4)*2 + Math.sin(vx*2.0)*0.2;
-                pos[i*3+2] = h; // Apply height
+                pos[i*3+2] = h;
 
-                // Regrow grass slowly
-                if (grassHealth[i] < 1.0) grassHealth[i] += 0.001;
+                // Regrow grass faster
+                if (grassHealth[i] < 1.0) grassHealth[i] += 0.002;
 
-                if (h < water) tempC.setHex(0x0044ff); // Water
-                else if (h < water + 0.1) tempC.setHex(0xd2b48c); // Sand
+                if (h < water) tempC.setHex(0x0022aa); 
+                else if (h < water + 0.1) tempC.setHex(0xd2b48c);
                 else if (h < 1.5) {
-                    // Grass color fades to brown as health decreases
-                    tempC.setRGB(0.13 + (1 - grassHealth[i])*0.2, 0.54 * grassHealth[i], 0.13 * grassHealth[i]);
-                } else tempC.setHex(0xffffff); // Snow
+                    // Bright green when healthy, dark brown when eaten
+                    tempC.setRGB(0.1 + (1 - grassHealth[i])*0.2, 0.8 * grassHealth[i], 0.2 * grassHealth[i]);
+                } else tempC.setHex(0xffffff);
                 
                 colors.push(tempC.r, tempC.g, tempC.b);
             }
@@ -129,39 +138,53 @@
             geometry.attributes.position.needsUpdate = true;
             geometry.attributes.color.needsUpdate = true;
 
-            // 2. UPDATE BIOLOGY
+            // 2. SURVIVAL BIOLOGY
             const nextGen = [], drawPos = [], drawCol = [], pCol = new THREE.Color();
             
+            // Failsafe: if pop is too low, duplicate survivors
+            if (particles.length > 0 && particles.length < 10) spawn(20);
+
             for (let p of particles) {
                 const landH = Math.sin(p.x*0.4)*Math.cos(p.z*0.4)*2 + Math.sin(p.x*2.0)*0.2;
-                const speed = (landH < water) ? 4 : 1;
+                const inWater = landH < water;
+                const speed = inWater ? 4 : 1;
                 
                 p.x += (Math.random()-0.5) * metabolism * speed;
                 p.z += (Math.random()-0.5) * metabolism * speed;
 
-                // Consumption Logic: Find nearest vertex to "eat"
                 const gridX = Math.round(((p.x + size/2) / size) * segments);
                 const gridZ = Math.round(((p.z + size/2) / size) * segments);
-                const vIdx = gridZ * (segments + 1) + gridX;
+                const vIdx = Math.max(0, Math.min(vertexCount - 1, gridZ * (segments + 1) + gridX));
 
-                if (landH >= water && landH < 1.5 && grassHealth[vIdx] > 0.1) {
-                    p.energy += 1.5; 
-                    grassHealth[vIdx] -= 0.05; // Eat the grass!
+                // Balanced Metabolism
+                if (!inWater && landH < 1.5 && grassHealth[vIdx] > 0.2) {
+                    p.energy += 2.0; // Faster feeding
+                    grassHealth[vIdx] -= 0.03; 
                 } else {
-                    p.energy -= 1.0;
+                    p.energy -= 0.8; // Slower starvation
                 }
 
-                if (p.energy > 180 && nextGen.length < maxPop) {
-                    p.energy = 80; nextGen.push({ x: p.x, z: p.z, energy: 80 });
+                // Reproduce at 200 energy
+                if (p.energy > 200 && nextGen.length < maxPop) {
+                    p.energy = 100; 
+                    nextGen.push({ x: p.x, z: p.z, energy: 100 });
                 }
 
                 if (p.energy > 0) {
                     nextGen.push(p);
-                    drawPos.push(p.x, Math.max(landH, water)+0.15, p.z);
-                    pCol.setHex(p.energy > 150 ? 0xff00ff : (landH < water ? 0x00ffff : 0x00ffcc));
+                    drawPos.push(p.x, Math.max(landH, water)+0.2, p.z);
+                    
+                    // High-intensity colors
+                    if (p.energy > 160) pCol.setHex(0xff00ff); // Mating (Hot Pink)
+                    else if (inWater) pCol.setHex(0x00ffff);   // Swimming (Cyan)
+                    else pCol.setHex(0x00ffcc);                // Healthy (Teal)
+                    
                     drawCol.push(pCol.r, pCol.g, pCol.b);
                 }
-                if (Math.abs(p.x) > 9.8 || Math.abs(p.z) > 9.8) { p.x *= -0.9; p.z *= -0.9; }
+                
+                // Wrap around edges
+                if (Math.abs(p.x) > 9.8) p.x *= -0.98;
+                if (Math.abs(p.z) > 9.8) p.z *= -0.98;
             }
 
             particles = nextGen;
@@ -169,7 +192,6 @@
             pGeometry.setAttribute('color', new THREE.Float32BufferAttribute(drawCol, 3));
             readout.innerText = `POPULATION: ${particles.length}`;
 
-            // 3. SYNCED ROTATION
             worldGroup.rotation.y += parseFloat(sSpeed.value);
             renderer.render(scene, camera);
         }
