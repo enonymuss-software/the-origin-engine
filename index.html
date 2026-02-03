@@ -30,79 +30,98 @@
     <script type="module">
         import * as THREE from 'three';
 
-        // 1. THE SCENE (The Universe)
+        // 1. THE SCENE
         const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x020205); // Deep space black
 
-        // 2. THE CAMERA (Your Eyes)
+        // 2. THE CAMERA
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.z = 5;
+        camera.position.set(0, 7, 12);
+        camera.lookAt(0, 0, 0);
 
-        // 3. THE RENDERER (The Engine)
+        // 3. THE RENDERER
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.getElementById('world-container').appendChild(renderer.domElement);
 
-        // 4. THE LIGHTING (The Sun)
-        const ambientLight = new THREE.AmbientLight(0x404040, 2); // Soft white light everywhere
+        // 4. THE LIGHTING
+        const ambientLight = new THREE.AmbientLight(0x404040, 2);
         scene.add(ambientLight);
-
-        const sunLight = new THREE.DirectionalLight(0xffffff, 3); // Strong "Sun" light
+        const sunLight = new THREE.DirectionalLight(0xffffff, 3);
         sunLight.position.set(5, 10, 7);
         scene.add(sunLight);
 
-        // 5. THE LANDSCAPE (Colorized Terrain)
-        const geometry = new THREE.PlaneGeometry(15, 15, 120, 120);
+        // 5. THE LANDSCAPE
+        const size = 20;
+        const segments = 100;
+        const geometry = new THREE.PlaneGeometry(size, size, segments, segments);
         const vertices = geometry.attributes.position.array;
-        
-        // Create a place to store colors for every point
         const colors = [];
         const color = new THREE.Color();
 
         for (let i = 0; i < vertices.length; i += 3) {
             const x = vertices[i];
             const y = vertices[i + 1];
-            
-            // The "Mountain" Math
-            const height = Math.sin(x * 0.5) * Math.cos(y * 0.5) * 2 + 
-                           Math.sin(x * 1.5) * 0.5; // Adding a second layer for detail
+            // Complex terrain math
+            const height = Math.sin(x * 0.4) * Math.cos(y * 0.4) * 2 + Math.sin(x * 2) * 0.2;
             vertices[i + 2] = height;
 
-            // The "Color" Logic
-            if (height < 0.2) {
-                color.setHex(0x0066ff); // Water Blue
-            } else if (height < 1.2) {
-                color.setHex(0x228b22); // Forest Green
-            } else {
-                color.setHex(0xffffff); // Snow White
-            }
+            if (height < 0) color.setHex(0x0044ff);      // Deep Water
+            else if (height < 0.2) color.setHex(0x0088ff); // Shallow Water
+            else if (height < 1.5) color.setHex(0x22aa22); // Grass
+            else color.setHex(0xeeeeee);                 // Snow
             colors.push(color.r, color.g, color.b);
         }
-
-        // Tell the geometry to use these colors
         geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-
-        const material = new THREE.MeshStandardMaterial({ 
-            vertexColors: true, // Use the colors we just made
-            flatShading: true   // Gives it a cool "low-poly" crystal look
-        });
-        
-        const terrain = new THREE.Mesh(geometry, material);
+        const terrain = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true }));
         terrain.rotation.x = -Math.PI / 2;
         scene.add(terrain);
 
-        camera.position.set(0, 5, 10);
-        camera.lookAt(0, 0, 0);
+        // 6. THE LIFE SPARK (Particle System)
+        const particleCount = 500;
+        const pGeometry = new THREE.BufferGeometry();
+        const pPositions = new Float32Array(particleCount * 3);
+        const pVelocities = [];
 
-        // 6. THE ANIMATION LOOP
+        for (let i = 0; i < particleCount; i++) {
+            // Start particles at random spots
+            pPositions[i * 3] = (Math.random() - 0.5) * 15; // X
+            pPositions[i * 3 + 1] = 5;                      // Y (Height)
+            pPositions[i * 3 + 2] = (Math.random() - 0.5) * 15; // Z
+            pVelocities.push({ x: (Math.random() - 0.5) * 0.02, z: (Math.random() - 0.5) * 0.02 });
+        }
+
+        pGeometry.setAttribute('position', new THREE.BufferAttribute(pPositions, 3));
+        const pMaterial = new THREE.PointsMaterial({ color: 0x00ffcc, size: 0.1, transparent: true, opacity: 0.8 });
+        const lifeForms = new THREE.Points(pGeometry, pMaterial);
+        scene.add(lifeForms);
+
+        // 7. THE ANIMATION LOOP
         function animate() {
             requestAnimationFrame(animate);
-            terrain.rotation.z += 0.001; // Very slow rotation
+            
+            // Move Life Forms
+            const positions = lifeForms.geometry.attributes.position.array;
+            for (let i = 0; i < particleCount; i++) {
+                // Update X and Z (horizontal movement)
+                positions[i * 3] += pVelocities[i].x;
+                positions[i * 3 + 2] += pVelocities[i].z;
+
+                // Loop them back if they wander off the island
+                if (Math.abs(positions[i * 3]) > 10) pVelocities[i].x *= -1;
+                if (Math.abs(positions[i * 3 + 2]) > 10) pVelocities[i].z *= -1;
+
+                // Make them "bob" up and down
+                positions[i * 3 + 1] = 2 + Math.sin(Date.now() * 0.002 + i);
+            }
+            lifeForms.geometry.attributes.position.needsUpdate = true;
+            
+            terrain.rotation.z += 0.0005;
             renderer.render(scene, camera);
         }
 
         animate();
-
-        document.querySelector('.status-text').innerText = "THE ORIGIN ENGINE: BIOMES STABILIZED";
+        document.querySelector('.status-text').innerText = "THE ORIGIN ENGINE: LIFE DETECTED";
     </script>
 </body>
 </html>
