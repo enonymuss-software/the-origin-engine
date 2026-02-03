@@ -2,22 +2,34 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>The Origin Engine - High-Intensity Ecosystem</title>
+    <title>The Origin Engine - Living Ecosystem</title>
     <style>
         body { margin: 0; background-color: #000; color: #00ffcc; font-family: 'Courier New', monospace; overflow: hidden; }
+        
+        /* Main UI Panel */
         #ui-layer { 
             position: absolute; top: 20px; left: 20px; z-index: 10; 
-            background: rgba(0, 10, 10, 0.85); padding: 15px; 
+            background: rgba(0, 10, 10, 0.9); padding: 20px; 
             border: 1px solid #00ffcc; border-radius: 5px;
-            pointer-events: auto; width: 250px; box-shadow: 0 0 15px rgba(0, 255, 204, 0.2);
+            pointer-events: auto; width: 280px; box-shadow: 0 0 20px rgba(0, 255, 204, 0.3);
         }
-        .status-text { font-size: 1.1rem; font-weight: bold; margin-bottom: 5px; color: #fff; text-transform: uppercase; }
-        #system-readout { font-size: 1rem; margin-bottom: 10px; color: #00ffcc; font-weight: bold; }
-        label { display: block; margin-top: 10px; color: #00ffcc; font-size: 0.7rem; letter-spacing: 1px; }
-        input[type=range] { width: 100%; cursor: pointer; accent-color: #00ffcc; }
+
+        .status-text { font-size: 1.2rem; font-weight: bold; margin-bottom: 5px; color: #fff; text-transform: uppercase; letter-spacing: 2px; }
+        #system-readout { font-size: 1.1rem; margin-bottom: 15px; color: #00ffcc; font-weight: bold; border-bottom: 1px solid #004444; padding-bottom: 10px; }
+        
+        /* Legend Styles */
+        .legend { margin: 15px 0; font-size: 0.75rem; }
+        .legend-item { display: flex; align-items: center; margin-bottom: 5px; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 10px; box-shadow: 0 0 5px currentColor; }
+        
+        /* Tooltip/About Styles */
+        .about-section { font-size: 0.7rem; color: #88aaaa; line-height: 1.4; margin-top: 15px; border-top: 1px solid #004444; padding-top: 10px; }
+
+        label { display: block; margin-top: 10px; color: #00ffcc; font-size: 0.7rem; letter-spacing: 1px; font-weight: bold; }
+        input[type=range] { width: 100%; cursor: pointer; accent-color: #00ffcc; margin-bottom: 5px; }
         button { 
             width: 100%; margin-top: 15px; background: #004444; border: 1px solid #00ffcc; 
-            color: #00ffcc; padding: 8px; cursor: pointer; font-family: inherit; font-weight: bold;
+            color: #00ffcc; padding: 10px; cursor: pointer; font-family: inherit; font-weight: bold; text-transform: uppercase;
         }
         button:hover { background: #00ffcc; color: #050505; }
     </style>
@@ -27,14 +39,28 @@
     <div id="ui-layer">
         <div class="status-text">Origin Engine</div>
         <div id="system-readout">POPULATION: 0</div>
-        <hr style="border:0; border-top:1px solid #004444;">
+
+        <div class="legend">
+            <div class="legend-item"><div class="dot" style="background: #00ffcc; color: #00ffcc;"></div> TEAL: GRAZING (Neutral)</div>
+            <div class="legend-item"><div class="dot" style="background: #ff00ff; color: #ff00ff;"></div> PINK: MATING (High Energy)</div>
+            <div class="legend-item"><div class="dot" style="background: #00ffff; color: #00ffff;"></div> CYAN: SWIMMING (Panic)</div>
+        </div>
+
         <label>WORLD ROTATION</label>
         <input type="range" id="speedSlider" min="0" max="0.01" step="0.0001" value="0.0005">
-        <label>METABOLISM</label>
+        
+        <label>METABOLISM (Consumption Rate)</label>
         <input type="range" id="lifeSlider" min="0.005" max="0.1" step="0.001" value="0.025">
-        <label>SEA LEVEL</label>
+        
+        <label>SEA LEVEL (Flood Control)</label>
         <input type="range" id="seaSlider" min="-1.5" max="2" step="0.1" value="0">
-        <button id="reseedBtn">RESEED LIFE (ADD 100)</button>
+
+        <button id="reseedBtn">Reseed Population</button>
+
+        <div class="about-section">
+            <strong>SYSTEM LOGIC:</strong><br>
+            Life-forms consume green biomass to gain energy. High energy triggers asexual budding. Submergence or lack of vegetation leads to energy depletion and death. Terrain and life are generated purely via deterministic algorithms.
+        </div>
     </div>
 
     <div id="world-container"></div>
@@ -74,12 +100,10 @@
         const vertexCount = geometry.attributes.position.count;
         const grassHealth = new Float32Array(vertexCount).fill(1.0);
 
-        // --- ENHANCED LIFE FORMS ---
+        // --- LIFE FORMS ---
         let particles = [];
         const maxPop = 1500;
         const pGeometry = new THREE.BufferGeometry();
-        
-        // Additive blending makes them look like glowing lights
         const pMaterial = new THREE.PointsMaterial({ 
             size: 0.35, 
             vertexColors: true, 
@@ -122,13 +146,11 @@
                 const h = Math.sin(vx*0.4)*Math.cos(vy*0.4)*2 + Math.sin(vx*2.0)*0.2;
                 pos[i*3+2] = h;
 
-                // Regrow grass faster
                 if (grassHealth[i] < 1.0) grassHealth[i] += 0.002;
 
                 if (h < water) tempC.setHex(0x0022aa); 
                 else if (h < water + 0.1) tempC.setHex(0xd2b48c);
                 else if (h < 1.5) {
-                    // Bright green when healthy, dark brown when eaten
                     tempC.setRGB(0.1 + (1 - grassHealth[i])*0.2, 0.8 * grassHealth[i], 0.2 * grassHealth[i]);
                 } else tempC.setHex(0xffffff);
                 
@@ -138,10 +160,8 @@
             geometry.attributes.position.needsUpdate = true;
             geometry.attributes.color.needsUpdate = true;
 
-            // 2. SURVIVAL BIOLOGY
+            // 2. BIOLOGY LOGIC
             const nextGen = [], drawPos = [], drawCol = [], pCol = new THREE.Color();
-            
-            // Failsafe: if pop is too low, duplicate survivors
             if (particles.length > 0 && particles.length < 10) spawn(20);
 
             for (let p of particles) {
@@ -156,15 +176,13 @@
                 const gridZ = Math.round(((p.z + size/2) / size) * segments);
                 const vIdx = Math.max(0, Math.min(vertexCount - 1, gridZ * (segments + 1) + gridX));
 
-                // Balanced Metabolism
                 if (!inWater && landH < 1.5 && grassHealth[vIdx] > 0.2) {
-                    p.energy += 2.0; // Faster feeding
+                    p.energy += 2.0; 
                     grassHealth[vIdx] -= 0.03; 
                 } else {
-                    p.energy -= 0.8; // Slower starvation
+                    p.energy -= 0.8;
                 }
 
-                // Reproduce at 200 energy
                 if (p.energy > 200 && nextGen.length < maxPop) {
                     p.energy = 100; 
                     nextGen.push({ x: p.x, z: p.z, energy: 100 });
@@ -173,16 +191,12 @@
                 if (p.energy > 0) {
                     nextGen.push(p);
                     drawPos.push(p.x, Math.max(landH, water)+0.2, p.z);
-                    
-                    // High-intensity colors
-                    if (p.energy > 160) pCol.setHex(0xff00ff); // Mating (Hot Pink)
-                    else if (inWater) pCol.setHex(0x00ffff);   // Swimming (Cyan)
-                    else pCol.setHex(0x00ffcc);                // Healthy (Teal)
-                    
+                    if (p.energy > 160) pCol.setHex(0xff00ff);
+                    else if (inWater) pCol.setHex(0x00ffff);
+                    else pCol.setHex(0x00ffcc);
                     drawCol.push(pCol.r, pCol.g, pCol.b);
                 }
                 
-                // Wrap around edges
                 if (Math.abs(p.x) > 9.8) p.x *= -0.98;
                 if (Math.abs(p.z) > 9.8) p.z *= -0.98;
             }
