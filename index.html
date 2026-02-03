@@ -113,27 +113,47 @@
         const lifeSlider = document.getElementById('lifeSlider');
         const seaSlider = document.getElementById('seaSlider');
 
-        // 8. THE ANIMATION LOOP
+        // 8. THE ANIMATION LOOP (With Environmental Awareness)
         function animate() {
             requestAnimationFrame(animate);
             
-            // Link World Rotation to Slider
             terrain.rotation.z += parseFloat(speedSlider.value);
-
-            // Link Sea Level to Slider (moves the terrain up/down)
             terrain.position.y = parseFloat(seaSlider.value);
 
-            // Move Life Forms based on "Life Speed" slider
             const positions = lifeForms.geometry.attributes.position.array;
             const currentLifeSpeed = parseFloat(lifeSlider.value);
 
             for (let i = 0; i < particleCount; i++) {
-                positions[i * 3] += (Math.random() - 0.5) * currentLifeSpeed;
-                positions[i * 3 + 2] += (Math.random() - 0.5) * currentLifeSpeed;
+                // Get current horizontal position
+                const x = positions[i * 3];
+                const z = positions[i * 3 + 2];
 
-                if (Math.abs(positions[i * 3]) > 10) positions[i * 3] *= -0.9;
-                if (Math.abs(positions[i * 3 + 2]) > 10) positions[i * 3 + 2] *= -0.9;
+                // --- THE SENSORY CALCULATION ---
+                // We calculate the height of the mountain at THIS specific spot
+                // using the same math we used to build the land.
+                const landHeight = Math.sin(x * 0.4) * Math.cos(z * 0.4) * 2 + Math.sin(x * 2) * 0.2;
+                
+                let movementMultiplier = 1.0;
+                
+                if (landHeight + terrain.position.y < 0.2) {
+                    // THEY ARE IN WATER: Panicked swimming (Faster)
+                    movementMultiplier = 3.0;
+                    pMaterial.color.setHex(0x00ffff); // Turn brighter blue
+                } else {
+                    // THEY ARE ON LAND: Calm grazing (Slower)
+                    movementMultiplier = 0.5;
+                    pMaterial.color.setHex(0x00ffcc); // Return to teal
+                }
 
+                // Apply movement based on environment
+                positions[i * 3] += (Math.random() - 0.5) * currentLifeSpeed * movementMultiplier;
+                positions[i * 3 + 2] += (Math.random() - 0.5) * currentLifeSpeed * movementMultiplier;
+
+                // Boundary Check
+                if (Math.abs(positions[i * 3]) > 9) positions[i * 3] *= -0.9;
+                if (Math.abs(positions[i * 3 + 2]) > 9) positions[i * 3 + 2] *= -0.9;
+
+                // Vertical Hover (Bobbing)
                 positions[i * 3 + 1] = 2 + Math.sin(Date.now() * 0.002 + i);
             }
             lifeForms.geometry.attributes.position.needsUpdate = true;
