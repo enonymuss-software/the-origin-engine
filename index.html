@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>The Origin Engine</title>
+    <style>
+        /* This section controls the "look" of the page */
+        body { margin: 0; background-color: #050505; color: #00ffcc; font-family: monospace; overflow: hidden; }
+        #ui-layer { position: absolute; top: 20px; left: 20px; z-index: 10; pointer-events: none; }
+        .status-text { font-size: 1.2rem; text-shadow: 0 0 10px #00ffcc; }
+    </style>
+</head>
+<body>
+
+    <div id="ui-layer">
+        <div class="status-text">THE ORIGIN ENGINE: INITIALIZING...</div>
+        <div id="system-readout">SYSTEM STABLE: 1.0.0</div>
+    </div>
+
+    <div id="world-container"></div>
+
+    <script>
+        // We will put the "Universal Laws" (JavaScript) here in Phase 2
+        console.log("The Origin Engine is online.");
+    </script>
+</body>
+</html>
