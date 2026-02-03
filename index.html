@@ -42,122 +42,112 @@
     <script type="module">
         import * as THREE from 'three';
 
-        // 1. THE SCENE
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x020205); // Deep space black
+        scene.background = new THREE.Color(0x020205);
 
-        // 2. THE CAMERA
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(0, 7, 12);
+        camera.position.set(0, 8, 12);
         camera.lookAt(0, 0, 0);
 
-        // 3. THE RENDERER
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.getElementById('world-container').appendChild(renderer.domElement);
 
-        // 4. THE LIGHTING
+        // LIGHTING
         const ambientLight = new THREE.AmbientLight(0x404040, 2);
         scene.add(ambientLight);
         const sunLight = new THREE.DirectionalLight(0xffffff, 3);
         sunLight.position.set(5, 10, 7);
         scene.add(sunLight);
 
-        // 5. THE LANDSCAPE
+        // LANDSCAPE SETUP
         const size = 20;
         const segments = 100;
         const geometry = new THREE.PlaneGeometry(size, size, segments, segments);
-        const vertices = geometry.attributes.position.array;
-        const colors = [];
-        const color = new THREE.Color();
-
-        for (let i = 0; i < vertices.length; i += 3) {
-            const x = vertices[i];
-            const y = vertices[i + 1];
-            // Complex terrain math
-            const height = Math.sin(x * 0.4) * Math.cos(y * 0.4) * 2 + Math.sin(x * 2) * 0.2;
-            vertices[i + 2] = height;
-
-            if (height < 0) color.setHex(0x0044ff);      // Deep Water
-            else if (height < 0.2) color.setHex(0x0088ff); // Shallow Water
-            else if (height < 1.5) color.setHex(0x22aa22); // Grass
-            else color.setHex(0xeeeeee);                 // Snow
-            colors.push(color.r, color.g, color.b);
-        }
-        geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
         const terrain = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true }));
         terrain.rotation.x = -Math.PI / 2;
         scene.add(terrain);
 
-        // 6. THE LIFE SPARK (Particle System)
-        const particleCount = 500;
+        // LIFE SPARK SETUP
+        const particleCount = 600;
         const pGeometry = new THREE.BufferGeometry();
         const pPositions = new Float32Array(particleCount * 3);
-        const pVelocities = [];
-
         for (let i = 0; i < particleCount; i++) {
-            // Start particles at random spots
-            pPositions[i * 3] = (Math.random() - 0.5) * 15; // X
-            pPositions[i * 3 + 1] = 5;                      // Y (Height)
-            pPositions[i * 3 + 2] = (Math.random() - 0.5) * 15; // Z
-            pVelocities.push({ x: (Math.random() - 0.5) * 0.02, z: (Math.random() - 0.5) * 0.02 });
+            pPositions[i * 3] = (Math.random() - 0.5) * 18; 
+            pPositions[i * 3 + 2] = (Math.random() - 0.5) * 18;
         }
-
         pGeometry.setAttribute('position', new THREE.BufferAttribute(pPositions, 3));
-        const pMaterial = new THREE.PointsMaterial({ color: 0x00ffcc, size: 0.1, transparent: true, opacity: 0.8 });
+        const pMaterial = new THREE.PointsMaterial({ size: 0.15, vertexColors: false, transparent: true, opacity: 0.9 });
         const lifeForms = new THREE.Points(pGeometry, pMaterial);
         scene.add(lifeForms);
 
-        // 7. THE GOD CONSOLE LOGIC
+        // UI ELEMENTS
         const speedSlider = document.getElementById('speedSlider');
         const lifeSlider = document.getElementById('lifeSlider');
         const seaSlider = document.getElementById('seaSlider');
 
-        // 8. THE ANIMATION LOOP (With Environmental Awareness)
+        // THE CALCULATION ENGINE
         function animate() {
             requestAnimationFrame(animate);
             
-            terrain.rotation.z += parseFloat(speedSlider.value);
-            terrain.position.y = parseFloat(seaSlider.value);
-
-            const positions = lifeForms.geometry.attributes.position.array;
+            const time = Date.now() * 0.001;
+            const currentWaterLevel = parseFloat(seaSlider.value);
             const currentLifeSpeed = parseFloat(lifeSlider.value);
 
-            for (let i = 0; i < particleCount; i++) {
-                // Get current horizontal position
-                const x = positions[i * 3];
-                const z = positions[i * 3 + 2];
+            // UPDATE TERRAIN COLORS BASED ON WATER LEVEL
+            const vertices = geometry.attributes.position.array;
+            const colors = [];
+            const color = new THREE.Color();
 
-                // --- THE SENSORY CALCULATION ---
-                // We calculate the height of the mountain at THIS specific spot
-                // using the same math we used to build the land.
-                const landHeight = Math.sin(x * 0.4) * Math.cos(z * 0.4) * 2 + Math.sin(x * 2) * 0.2;
+            for (let i = 0; i < vertices.length; i += 3) {
+                const x = vertices[i];
+                const y = vertices[i + 1];
                 
-                let movementMultiplier = 1.0;
-                
-                if (landHeight + terrain.position.y < 0.2) {
-                    // THEY ARE IN WATER: Panicked swimming (Faster)
-                    movementMultiplier = 3.0;
-                    pMaterial.color.setHex(0x00ffff); // Turn brighter blue
+                // Static terrain height math
+                const h = Math.sin(x * 0.4) * Math.cos(y * 0.4) * 2 + Math.sin(x * 2) * 0.2;
+                vertices[i + 2] = h;
+
+                // Color based on CURRENT water level slider
+                if (h < currentWaterLevel) {
+                    color.setHex(0x0044ff); // Water
+                } else if (h < currentWaterLevel + 0.3) {
+                    color.setHex(0xeedd88); // Sand/Beach
+                } else if (h < 1.5) {
+                    color.setHex(0x22aa22); // Grass
                 } else {
-                    // THEY ARE ON LAND: Calm grazing (Slower)
-                    movementMultiplier = 0.5;
-                    pMaterial.color.setHex(0x00ffcc); // Return to teal
+                    color.setHex(0xeeeeee); // Snow
                 }
+                colors.push(color.r, color.g, color.b);
+            }
+            geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+            geometry.attributes.color.needsUpdate = true;
 
-                // Apply movement based on environment
-                positions[i * 3] += (Math.random() - 0.5) * currentLifeSpeed * movementMultiplier;
-                positions[i * 3 + 2] += (Math.random() - 0.5) * currentLifeSpeed * movementMultiplier;
+            // UPDATE LIFE FORMS (Clamping to ground)
+            const pPos = lifeForms.geometry.attributes.position.array;
+            for (let i = 0; i < particleCount; i++) {
+                // Move them horizontally
+                pPos[i * 3] += (Math.random() - 0.5) * currentLifeSpeed;
+                pPos[i * 3 + 2] += (Math.random() - 0.5) * currentLifeSpeed;
 
-                // Boundary Check
-                if (Math.abs(positions[i * 3]) > 9) positions[i * 3] *= -0.9;
-                if (Math.abs(positions[i * 3 + 2]) > 9) positions[i * 3 + 2] *= -0.9;
+                // Get the land height at their new spot
+                const curX = pPos[i * 3];
+                const curZ = pPos[i * 3 + 2];
+                const landH = Math.sin(curX * 0.4) * Math.cos(curZ * 0.4) * 2 + Math.sin(curX * 2) * 0.2;
 
-                // Vertical Hover (Bobbing)
-                positions[i * 3 + 1] = 2 + Math.sin(Date.now() * 0.002 + i);
+                // "Glue" them to the surface
+                // If landH is below water level, they are "swimming" at water surface
+                // If landH is above water level, they are "walking" on the ground
+                pPos[i * 3 + 1] = Math.max(landH, currentWaterLevel) + 0.1;
+
+                // Boundary reset
+                if (Math.abs(curX) > 9.5 || Math.abs(curZ) > 9.5) {
+                    pPos[i * 3] = (Math.random() - 0.5) * 10;
+                    pPos[i * 3 + 2] = (Math.random() - 0.5) * 10;
+                }
             }
             lifeForms.geometry.attributes.position.needsUpdate = true;
             
+            terrain.rotation.z += parseFloat(speedSlider.value);
             renderer.render(scene, camera);
         }
 
