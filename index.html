@@ -42,19 +42,40 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.getElementById('world-container').appendChild(renderer.domElement);
 
-        // 4. THE OBJECT (The first "Atom")
-        const geometry = new THREE.BoxGeometry(1, 1, 1);
-        const material = new THREE.MeshBasicMaterial({ color: 0x00ffcc, wireframe: true });
-        const cube = new THREE.Mesh(geometry, material);
-        scene.add(cube);
+        // 4. THE LANDSCAPE (Procedural Terrain)
+        // We create a large flat plane made of 100x100 tiny squares
+        const geometry = new THREE.PlaneGeometry(10, 10, 100, 100);
+        
+        // This is the "Math" that creates mountains
+        const vertices = geometry.attributes.position.array;
+        for (let i = 0; i < vertices.length; i += 3) {
+            const x = vertices[i];
+            const y = vertices[i + 1];
+            
+            // We use a Sine wave combo to "crumple" the paper
+            // This is a simple version of "Noise"
+            vertices[i + 2] = Math.sin(x * 2) * Math.cos(y * 2) * 0.5;
+        }
 
-        // 5. THE ANIMATION LOOP (The heartbeat)
+        const material = new THREE.MeshBasicMaterial({ 
+            color: 0x00ffcc, 
+            wireframe: true 
+        });
+        
+        const terrain = new THREE.Mesh(geometry, material);
+        terrain.rotation.x = -Math.PI / 2; // Lay it flat like a floor
+        scene.add(terrain);
+
+        // Adjust camera to see the landscape
+        camera.position.set(0, 2, 5);
+        camera.lookAt(0, 0, 0);
+
+        // 5. THE ANIMATION LOOP
         function animate() {
             requestAnimationFrame(animate);
             
-            // Rotate the cube slightly every frame
-            cube.rotation.x += 0.01;
-            cube.rotation.y += 0.01;
+            // Gently rotate the world so we can see the 3D depth
+            terrain.rotation.z += 0.002;
             
             renderer.render(scene, camera);
         }
@@ -62,7 +83,7 @@
         animate();
 
         // Update the UI
-        document.querySelector('.status-text').innerText = "THE ORIGIN ENGINE: LENS ACTIVE";
+        document.querySelector('.status-text').innerText = "THE ORIGIN ENGINE: TERRAIN GENERATED";
     </script>
 </body>
 </html>
