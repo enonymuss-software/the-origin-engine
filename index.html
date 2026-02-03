@@ -19,9 +19,50 @@
 
     <div id="world-container"></div>
 
-    <script>
-        // We will put the "Universal Laws" (JavaScript) here in Phase 2
-        console.log("The Origin Engine is online.");
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+
+        // 1. THE SCENE (The Universe)
+        const scene = new THREE.Scene();
+
+        // 2. THE CAMERA (Your Eyes)
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.z = 5;
+
+        // 3. THE RENDERER (The Engine)
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.getElementById('world-container').appendChild(renderer.domElement);
+
+        // 4. THE OBJECT (The first "Atom")
+        const geometry = new THREE.BoxGeometry(1, 1, 1);
+        const material = new THREE.MeshBasicMaterial({ color: 0x00ffcc, wireframe: true });
+        const cube = new THREE.Mesh(geometry, material);
+        scene.add(cube);
+
+        // 5. THE ANIMATION LOOP (The heartbeat)
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Rotate the cube slightly every frame
+            cube.rotation.x += 0.01;
+            cube.rotation.y += 0.01;
+            
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // Update the UI
+        document.querySelector('.status-text').innerText = "THE ORIGIN ENGINE: LENS ACTIVE";
     </script>
 </body>
 </html>
