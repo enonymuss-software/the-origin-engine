@@ -90,11 +90,11 @@
         function animate() {
             requestAnimationFrame(animate);
             
-            const time = Date.now() * 0.001;
             const currentWaterLevel = parseFloat(seaSlider.value);
             const currentLifeSpeed = parseFloat(lifeSlider.value);
+            const worldRotationSpeed = parseFloat(speedSlider.value);
 
-            // UPDATE TERRAIN COLORS BASED ON WATER LEVEL
+            // 1. UPDATE TERRAIN COLORS (The Flooding Logic)
             const vertices = geometry.attributes.position.array;
             const colors = [];
             const color = new THREE.Color();
@@ -102,16 +102,13 @@
             for (let i = 0; i < vertices.length; i += 3) {
                 const x = vertices[i];
                 const y = vertices[i + 1];
-                
-                // Static terrain height math
                 const h = Math.sin(x * 0.4) * Math.cos(y * 0.4) * 2 + Math.sin(x * 2) * 0.2;
                 vertices[i + 2] = h;
 
-                // Color based on CURRENT water level slider
                 if (h < currentWaterLevel) {
                     color.setHex(0x0044ff); // Water
-                } else if (h < currentWaterLevel + 0.3) {
-                    color.setHex(0xeedd88); // Sand/Beach
+                } else if (h < currentWaterLevel + 0.2) {
+                    color.setHex(0xeedd88); // Sand
                 } else if (h < 1.5) {
                     color.setHex(0x22aa22); // Grass
                 } else {
@@ -122,24 +119,30 @@
             geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
             geometry.attributes.color.needsUpdate = true;
 
-            // UPDATE LIFE FORMS (Clamping to ground)
+            // 2. UPDATE LIFE FORMS (The Panic & Ground-Clamping)
             const pPos = lifeForms.geometry.attributes.position.array;
             for (let i = 0; i < particleCount; i++) {
-                // Move them horizontally
-                pPos[i * 3] += (Math.random() - 0.5) * currentLifeSpeed;
-                pPos[i * 3 + 2] += (Math.random() - 0.5) * currentLifeSpeed;
-
-                // Get the land height at their new spot
                 const curX = pPos[i * 3];
                 const curZ = pPos[i * 3 + 2];
+                
+                // Calculate height at current position
                 const landH = Math.sin(curX * 0.4) * Math.cos(curZ * 0.4) * 2 + Math.sin(curX * 2) * 0.2;
 
-                // "Glue" them to the surface
-                // If landH is below water level, they are "swimming" at water surface
-                // If landH is above water level, they are "walking" on the ground
-                pPos[i * 3 + 1] = Math.max(landH, currentWaterLevel) + 0.1;
+                // WATER PANIC LOGIC
+                let panicMultiplier = 1.0;
+                if (landH < currentWaterLevel) {
+                    panicMultiplier = 4.0; // Move 4x faster in water
+                }
 
-                // Boundary reset
+                // Apply Movement
+                pPos[i * 3] += (Math.random() - 0.5) * currentLifeSpeed * panicMultiplier;
+                pPos[i * 3 + 2] += (Math.random() - 0.5) * currentLifeSpeed * panicMultiplier;
+
+                // CLAMPING: Instant height update
+                // We add a tiny bit (0.05) so they don't "sink" into the floor
+                pPos[i * 3 + 1] = Math.max(landH, currentWaterLevel) + 0.05;
+
+                // Boundary Reset
                 if (Math.abs(curX) > 9.5 || Math.abs(curZ) > 9.5) {
                     pPos[i * 3] = (Math.random() - 0.5) * 10;
                     pPos[i * 3 + 2] = (Math.random() - 0.5) * 10;
@@ -147,7 +150,11 @@
             }
             lifeForms.geometry.attributes.position.needsUpdate = true;
             
-            terrain.rotation.z += parseFloat(speedSlider.value);
+            // 3. THE SYNC FIX: Rotate the CONTAINER, not the individual pieces
+            // This prevents the "Hovering" glitch
+            terrain.rotation.z += worldRotationSpeed;
+            lifeForms.rotation.y = terrain.rotation.z; // Keep particles synced with land rotation
+            
             renderer.render(scene, camera);
         }
 
