@@ -6,7 +6,7 @@
     <style>
         body { margin: 0; background-color: #000; color: #00ffcc; font-family: 'Courier New', monospace; overflow: hidden; }
         #ui-layer { 
-            position: absolute; top: 20px; left: 20px; z-index: 10; 
+            position: absolute; top: 48px; left: 20px; z-index: 10; 
             background: rgba(0, 10, 10, 0.9); padding: 20px; 
             border: 1px solid #00ffcc; border-radius: 5px;
             pointer-events: auto; width: 280px; box-shadow: 0 0 20px rgba(0, 255, 204, 0.3);
@@ -24,9 +24,35 @@
             color: #00ffcc; padding: 10px; cursor: pointer; font-family: inherit; font-weight: bold; text-transform: uppercase;
         }
         button:hover { background: #00ffcc; color: #050505; }
+        .cta-row { display: flex; gap: 8px; margin-top: 12px; }
+        .cta-row a {
+            flex: 1; text-align: center; text-decoration: none; font-size: 0.7rem; font-weight: bold;
+            text-transform: uppercase; letter-spacing: 1px; padding: 8px 6px;
+            border: 1px solid #00ffcc; color: #00ffcc; background: #002222;
+        }
+        .cta-row a:hover { background: #00ffcc; color: #050505; }
+        #site-footer {
+            position: fixed; bottom: 0; left: 0; right: 0; z-index: 20;
+            padding: 10px 16px; text-align: center;
+            background: rgba(0, 8, 8, 0.85); border-top: 1px solid #004444;
+            font-size: 0.65rem; color: #668888; line-height: 1.45; pointer-events: none;
+        }
+        #site-footer a { color: #00ffcc; pointer-events: auto; }
+        #site-header {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 20;
+            padding: 10px 16px; text-align: center;
+            background: rgba(0, 8, 8, 0.85); border-bottom: 1px solid #004444;
+            font-size: 0.75rem; color: #88aaaa; letter-spacing: 0.5px;
+        }
+        #site-header a { color: #00ffcc; font-weight: bold; text-decoration: none; }
+        #site-header a:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
+
+    <header id="site-header">
+        Created by <a href="https://buildforjoy.dev/" target="_blank" rel="noopener noreferrer">buildforjoy.dev</a> — a non-commercial #BuildForJoy experiment
+    </header>
 
     <div id="ui-layer">
         <div class="status-text">Origin Engine</div>
@@ -49,13 +75,24 @@
 
         <button id="reseedBtn">Reseed Population</button>
 
+        <div class="cta-row">
+            <a href="https://github.com/enonymuss-software/the-origin-engine" target="_blank" rel="noopener noreferrer">Open Source</a>
+            <a href="https://enonymuss-software.github.io/the-origin-engine/" target="_blank" rel="noopener noreferrer">Play Demo</a>
+        </div>
+
         <div class="about-section">
             <strong>SYSTEM LOGIC:</strong><br>
-            Life-forms consume green biomass to gain energy. High energy triggers asexual budding. Submergence or lack of vegetation leads to energy depletion and death. Terrain and life are generated purely via deterministic algorithms.
+            Life-forms consume green biomass to gain energy. High energy triggers asexual budding. Submergence or lack of vegetation leads to energy depletion and death. Terrain and life are generated purely via deterministic algorithms. All features are free — built for curiosity, not commerce.
         </div>
     </div>
 
     <div id="world-container"></div>
+
+    <footer id="site-footer">
+        This app is a non-commercial hobby experiment provided &quot;AS IS&quot; without warranty of any kind, express or implied. Use at your own risk.
+        · <a href="https://github.com/enonymuss-software/the-origin-engine" target="_blank" rel="noopener noreferrer">Open Source</a>
+        · #BuildForJoy
+    </footer>
 
     <script type="importmap">
         { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
