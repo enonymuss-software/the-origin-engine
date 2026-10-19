@@ -24,13 +24,6 @@
             color: #00ffcc; padding: 10px; cursor: pointer; font-family: inherit; font-weight: bold; text-transform: uppercase;
         }
         button:hover { background: #00ffcc; color: #050505; }
-        .cta-row { display: flex; gap: 8px; margin-top: 12px; }
-        .cta-row a {
-            flex: 1; text-align: center; text-decoration: none; font-size: 0.7rem; font-weight: bold;
-            text-transform: uppercase; letter-spacing: 1px; padding: 8px 6px;
-            border: 1px solid #00ffcc; color: #00ffcc; background: #002222;
-        }
-        .cta-row a:hover { background: #00ffcc; color: #050505; }
         #site-footer {
             position: fixed; bottom: 0; left: 0; right: 0; z-index: 20;
             padding: 10px 16px; text-align: center;
@@ -40,19 +33,85 @@
         #site-footer a { color: #00ffcc; pointer-events: auto; }
         #site-header {
             position: fixed; top: 0; left: 0; right: 0; z-index: 20;
-            padding: 10px 16px; text-align: center;
+            display: flex; align-items: center; justify-content: center; gap: 16px;
+            padding: 8px 16px;
             background: rgba(0, 8, 8, 0.85); border-bottom: 1px solid #004444;
             font-size: 0.75rem; color: #88aaaa; letter-spacing: 0.5px;
         }
         #site-header a { color: #00ffcc; font-weight: bold; text-decoration: none; }
         #site-header a:hover { text-decoration: underline; }
+        #aboutBtn {
+            width: auto; margin: 0; padding: 5px 12px; font-size: 0.7rem;
+            background: #002222; border: 1px solid #00ffcc; color: #00ffcc;
+            cursor: pointer; font-family: inherit; font-weight: bold; text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        #aboutBtn:hover { background: #00ffcc; color: #050505; }
+        #about-modal {
+            display: none; position: fixed; inset: 0; z-index: 40;
+            background: rgba(0, 0, 0, 0.72); align-items: center; justify-content: center;
+            padding: 24px;
+        }
+        #about-modal.open { display: flex; }
+        #about-panel {
+            max-width: 480px; width: 100%; max-height: min(80vh, 560px); overflow-y: auto;
+            background: rgba(0, 12, 12, 0.97); border: 1px solid #00ffcc;
+            box-shadow: 0 0 28px rgba(0, 255, 204, 0.25); padding: 22px 24px;
+            color: #88aaaa; font-size: 0.8rem; line-height: 1.55;
+        }
+        #about-panel h2 {
+            margin: 0 0 12px; color: #fff; font-size: 1rem; letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        #about-panel h3 {
+            margin: 18px 0 8px; color: #00ffcc; font-size: 0.75rem; letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        #about-panel p { margin: 0 0 10px; }
+        #about-panel a { color: #00ffcc; }
+        #about-panel ul { margin: 0 0 10px; padding-left: 18px; }
+        #about-panel li { margin-bottom: 4px; }
+        #about-panel strong { color: #ccdede; }
+        #about-close {
+            width: 100%; margin-top: 16px; background: #004444; border: 1px solid #00ffcc;
+            color: #00ffcc; padding: 10px; cursor: pointer; font-family: inherit;
+            font-weight: bold; text-transform: uppercase;
+        }
+        #about-close:hover { background: #00ffcc; color: #050505; }
     </style>
 </head>
 <body>
 
     <header id="site-header">
-        Created by <a href="https://buildforjoy.dev/" target="_blank" rel="noopener noreferrer">buildforjoy.dev</a> — a non-commercial #BuildForJoy experiment
+        <span>Created by <a href="https://buildforjoy.dev/" target="_blank" rel="noopener noreferrer">buildforjoy.dev</a> — a non-commercial #BuildForJoy experiment</span>
+        <button type="button" id="aboutBtn">About</button>
     </header>
+
+    <div id="about-modal" role="dialog" aria-modal="true" aria-labelledby="about-title">
+        <div id="about-panel">
+            <h2 id="about-title">About The Origin Engine</h2>
+            <h3>#BuildForJoy</h3>
+            <p>
+                This project is part of <a href="https://buildforjoy.dev/" target="_blank" rel="noopener noreferrer">buildforjoy.dev</a> —
+                a non-monetized experiment built for fun, learning, testing new technology, and exploration.
+                There are no paywalls, subscriptions, or premium tiers. Just curiosity and code.
+            </p>
+            <h3>The Simulation</h3>
+            <p>
+                The Origin Engine is a living digital terrarium: a population that only survives when you keep
+                its world in balance. Survival depends on three levers working together:
+            </p>
+            <ul>
+                <li><strong>Planet rotation</strong> — how fast the world spins; motion and timing shape how life moves across the terrain.</li>
+                <li><strong>Land mass</strong> — sea level controls how much dry ground (and grazeable biomass) exists; flood too much and land dwindles.</li>
+                <li><strong>Creature metabolism</strong> — how quickly life-forms move and consume energy; too hungry and they strip the hills bare.</li>
+            </ul>
+            <p>
+                Tune those forces to maintain a stable population — or watch it boom, starve, or drown when the balance breaks.
+            </p>
+            <button type="button" id="about-close">Close</button>
+        </div>
+    </div>
 
     <div id="ui-layer">
         <div class="status-text">Origin Engine</div>
@@ -74,11 +133,6 @@
         <input type="range" id="seaSlider" min="-1.5" max="2" step="0.1" value="-0.5">
 
         <button id="reseedBtn">Reseed Population</button>
-
-        <div class="cta-row">
-            <a href="https://github.com/enonymuss-software/the-origin-engine" target="_blank" rel="noopener noreferrer">Open Source</a>
-            <a href="https://enonymuss-software.github.io/the-origin-engine/" target="_blank" rel="noopener noreferrer">Play Demo</a>
-        </div>
 
         <div class="about-section">
             <strong>SYSTEM LOGIC:</strong><br>
@@ -160,6 +214,14 @@
         const sSea = document.getElementById('seaSlider');
         const readout = document.getElementById('system-readout');
         document.getElementById('reseedBtn').onclick = () => spawn(100, true);
+
+        const aboutModal = document.getElementById('about-modal');
+        const openAbout = () => aboutModal.classList.add('open');
+        const closeAbout = () => aboutModal.classList.remove('open');
+        document.getElementById('aboutBtn').onclick = openAbout;
+        document.getElementById('about-close').onclick = closeAbout;
+        aboutModal.addEventListener('click', (e) => { if (e.target === aboutModal) closeAbout(); });
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeAbout(); });
 
         function animate() {
             requestAnimationFrame(animate);
